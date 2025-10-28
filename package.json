@@ -10,8 +10,8 @@
   "dependencies": {
     "@privy-io/react-auth": "^3.4.1",
     "@privy-io/wagmi": "^2.0.1",
-    "@solana-program/memo": "^0.9.0",
-    "@solana-program/system": "^0.9.0",
+    "@solana-program/memo": "^0.8.0",
+    "@solana-program/system": "^0.8.0",
     "@solana-program/token": "^0.7.0",
     "@solana/kit": "^4.0.0",
     "@solana/web3.js": "^1.98.4",
