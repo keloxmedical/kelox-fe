@@ -174,16 +174,16 @@ export default function Home() {
     }
   }, [authenticated, user, wallets, jwtToken]);
 
-  if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (!ready) {
+  //   return (
+  //     <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
+  //         <p className="mt-4 text-gray-600">Loading...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5] p-4">
@@ -281,10 +281,11 @@ export default function Home() {
 
             {/* Login Button */}
             <button
+              disabled={true}
               onClick={login}
               className="w-full cursor-pointer bg-black hover:bg-gray-800 text-white font-normal py-4 px-6 rounded-full transition-colors duration-200"
             >
-              Sign in
+              Coming soon
             </button>
           </div>
         )}
