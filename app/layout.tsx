@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kelox - Authentication",
-  description: "Kelox App with Privy Authentication",
+  title: "Kelox Medical",
+  description: "Tokenizing near-expiry medical supplies",
 };
 
 export default function RootLayout({
