@@ -277,7 +277,7 @@ export default function Home() {
             </div>
 
             {/* Sign in text */}
-            <p className="text-base text-black font-normal">Sign in to your account</p>
+            {/* <p className="text-base text-black font-normal">Sign in to your account</p> */}
 
             {/* Login Button */}
             <button
