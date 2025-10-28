@@ -13,6 +13,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           accentColor: '#676FFF',
         },
         embeddedWallets: {
+          //@ts-ignore
           createOnLogin: 'users-without-wallets',
         },
       }}

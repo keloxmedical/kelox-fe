@@ -43,6 +43,7 @@ export async function authenticatedFetch(
   };
 
   if (token) {
+    //@ts-ignore
     headers['Authorization'] = `Bearer ${token}`;
   }
 
