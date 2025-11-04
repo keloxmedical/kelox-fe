@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import bs58 from 'bs58';
 import { useUser } from '@/contexts/UserContext';
 import { useRouter } from 'next/navigation';
+import { BACKEND_API } from '@/config/api';
 
 export default function Home() {
   const { ready, authenticated, user, login, logout } = usePrivy();
@@ -99,7 +100,7 @@ export default function Home() {
       console.log('Sending to backend:', payload);
 
       // Send to backend
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch(`${BACKEND_API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -186,7 +187,7 @@ export default function Home() {
   // }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5] p-4">
+    <div className="flex min-h-screen items-center justify-center bg-primary p-4">
       <div className="w-full max-w-md">
         {/* Authentication Status */}
         {authenticated ? (
@@ -281,11 +282,10 @@ export default function Home() {
 
             {/* Login Button */}
             <button
-              disabled={true}
               onClick={login}
               className="w-full cursor-pointer bg-black hover:bg-gray-800 text-white font-normal py-4 px-6 rounded-full transition-colors duration-200"
             >
-              Coming soon
+              Sign in
             </button>
           </div>
         )}

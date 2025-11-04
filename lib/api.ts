@@ -2,7 +2,10 @@
  * API utilities for making authenticated requests to the Kelox backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+import { BACKEND_API as BACKEND_API_URL } from '@/config/api';
+
+// Re-export for convenience
+export const BACKEND_API = BACKEND_API_URL;
 
 /**
  * Get the stored JWT token from localStorage
@@ -47,7 +50,7 @@ export async function authenticatedFetch(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${BACKEND_API_URL}${endpoint}`;
 
   return fetch(url, {
     ...options,

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
+import { BACKEND_API } from '@/config/api';
 
 interface HospitalProfile {
   id: number;
@@ -45,7 +46,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setIsLoadingProfile(true);
       console.log('Fetching hospital profile...');
       
-      const response = await fetch('http://localhost:8080/api/hospitals/my-profile', {
+      const response = await fetch(`${BACKEND_API}/api/hospitals/my-profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`
