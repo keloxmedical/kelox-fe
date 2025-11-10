@@ -21,12 +21,64 @@ interface DeliveryAddress {
   isDefault: boolean;
 }
 
+interface DeliveryAddressDto {
+  id: number;
+  streetAddress: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProductResponse {
+  id: number;
+  name: string;
+  code: string;
+  sellerHospitalName: string;
+}
+
+interface OrderItemDto {
+  id: number;
+  product: ProductResponse;
+  quantity: number;
+  price: number;
+  type: string;
+  offerId: string | null;
+}
+
+type OrderStatus = 
+  | 'CALCULATING_LOGISTICS'
+  | 'CONFIRMING_PAYMENT'
+  | 'IN_TRANSIT'
+  | 'COMPLETED'
+  | 'CANCELED';
+
+interface OrderResponse {
+  id: string;
+  hospitalId: number;
+  hospitalName: string;
+  deliveryAddress: DeliveryAddressDto;
+  items: OrderItemDto[];
+  createdAt: string;
+  completedAt: string | null;
+  status: OrderStatus;
+  productsCost: number;
+  platformFee: number;
+  deliveryFee: number | null;
+  totalCost: number | null;
+}
+
 export default function CartPage() {
   const router = useRouter();
   const { ready, authenticated } = usePrivy();
   const { jwtToken, hospitalProfile, shoppingCart, isLoadingCart, fetchShoppingCart } = useUser();
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null);
+  const [pendingOrders, setPendingOrders] = useState<OrderResponse[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const alert = useAlert();
 
   useEffect(() => {
@@ -38,12 +90,31 @@ export default function CartPage() {
     }
   }, [ready, authenticated, router]);
 
-  // Fetch/refresh shopping cart when page loads
+  // Fetch/refresh shopping cart and pending orders when page loads
   useEffect(() => {
     if (hospitalProfile && jwtToken) {
       fetchShoppingCart();
+      fetchPendingOrders();
     }
   }, [hospitalProfile, jwtToken]);
+
+  const fetchPendingOrders = async () => {
+    try {
+      setIsLoadingOrders(true);
+      const response = await authenticatedFetch('/api/shop/orders/pending');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPendingOrders(data);
+      } else if (response.status !== 404) {
+        throw new Error('Failed to fetch pending orders');
+      }
+    } catch (error) {
+      console.error('Error fetching pending orders:', error);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
 
   const formatExpiryDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -90,6 +161,43 @@ export default function CartPage() {
     } catch (error) {
       console.error('Error removing item:', error);
       await alert.showAlert('Failed to remove item. Please try again.', 'Error');
+    }
+  };
+
+  const handleRequestDeliveryPrice = async () => {
+    if (!selectedAddress) {
+      await alert.showAlert('Please select a delivery address first', 'Address Required');
+      return;
+    }
+
+    try {
+      const requestData = {
+        deliveryAddressId: selectedAddress.id
+      };
+
+      const response = await authenticatedFetch('/api/shop/request-delivery-price', {
+        method: 'POST',
+        body: JSON.stringify(requestData)
+      });
+
+      if (response.ok) {
+        const order = await response.json();
+        await alert.showAlert(
+          'Delivery price request submitted successfully! You will be notified once the price is calculated.',
+          'Request Submitted'
+        );
+        // Refresh shopping cart (should be empty after creating order)
+        await fetchShoppingCart();
+        // Refresh pending orders
+        await fetchPendingOrders();
+        // Clear selected address
+        setSelectedAddress(null);
+      } else {
+        throw new Error('Failed to request delivery price');
+      }
+    } catch (error) {
+      console.error('Error requesting delivery price:', error);
+      await alert.showAlert('Failed to request delivery price. Please try again.', 'Error');
     }
   };
 
@@ -361,14 +469,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Delivery fee:</span>
                     <button 
-                      onClick={async () => {
-                        if (!selectedAddress) {
-                          await alert.showAlert('Please select a delivery address first', 'Address Required');
-                          return;
-                        }
-                        // TODO: Implement request delivery fee price
-                        await alert.showAlert('Request delivery fee feature coming soon', 'Coming Soon');
-                      }}
+                      onClick={handleRequestDeliveryPrice}
                       className="px-4 py-1 bg-black text-white rounded-full text-xs hover:bg-gray-800 transition-colors cursor-pointer"
                     >
                       Request price
@@ -434,19 +535,73 @@ export default function CartPage() {
                   <div>
                     <p className="text-sm text-gray-900 mb-2">2. Request delivery fee price</p>
                     <button 
-                      onClick={async () => {
-                        if (!selectedAddress) {
-                          await alert.showAlert('Please select a delivery address first', 'Address Required');
-                          return;
-                        }
-                        // TODO: Implement request delivery fee price
-                        await alert.showAlert('Request delivery fee feature coming soon', 'Coming Soon');
-                      }}
+                      onClick={handleRequestDeliveryPrice}
                       className="w-full px-4 py-2 bg-black text-white rounded-full text-sm hover:bg-gray-800 transition-colors cursor-pointer"
                     >
                       Request price
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pending Orders Section - Show even when cart is empty */}
+          {pendingOrders.length > 0 && (
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 sticky top-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Pending Orders</h3>
+                  <button
+                    onClick={() => {
+                      if (hospitalProfile) {
+                        const formattedName = hospitalProfile.name.replace(/\s+/g, '-');
+                        router.push(`/hospital/${formattedName}?tab=purchase`);
+                      }
+                    }}
+                    className="text-xs text-gray-700 hover:text-gray-900 underline cursor-pointer"
+                  >
+                    See all
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {pendingOrders.slice(0, 3).map((order) => {
+                    const statusColors: Record<OrderStatus, string> = {
+                      'CALCULATING_LOGISTICS': 'bg-blue-100 text-blue-700 border-blue-300',
+                      'CONFIRMING_PAYMENT': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+                      'IN_TRANSIT': 'bg-purple-100 text-purple-700 border-purple-300',
+                      'COMPLETED': 'bg-green-100 text-green-700 border-green-300',
+                      'CANCELED': 'bg-gray-100 text-gray-700 border-gray-300'
+                    };
+
+                    const statusLabels: Record<OrderStatus, string> = {
+                      'CALCULATING_LOGISTICS': 'Calculating Logistics',
+                      'CONFIRMING_PAYMENT': 'Confirming Payment',
+                      'IN_TRANSIT': 'In Transit',
+                      'COMPLETED': 'Completed',
+                      'CANCELED': 'Canceled'
+                    };
+
+                    return (
+                      <div key={order.id} className="p-4 bg-primary rounded-xl">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[order.status]}`}>
+                            {statusLabels[order.status]}
+                          </span>
+                          <p className="text-sm font-bold text-gray-900">
+                            {order.totalCost ? `${order.totalCost.toFixed(2)} euro` : 'Pending'}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
