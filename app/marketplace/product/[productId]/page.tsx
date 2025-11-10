@@ -45,11 +45,14 @@ interface OfferResponse {
 export default function ProductPage() {
   const router = useRouter();
   const params = useParams();
-  const { jwtToken, hospitalProfile } = useUser();
+  const { jwtToken, hospitalProfile, fetchShoppingCart } = useUser();
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [buyQuantity, setBuyQuantity] = useState<number>(1);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [pendingOffer, setPendingOffer] = useState<OfferResponse | null>(null);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
   
@@ -154,6 +157,49 @@ export default function ProductPage() {
     } catch (error) {
       console.error('Error cancelling offer:', error);
       alert('Failed to cancel offer. Please try again.');
+    }
+  };
+
+  const handleBuyNow = () => {
+    setBuyQuantity(1);
+    setShowBuyModal(true);
+  };
+
+  const handleAddToCart = async () => {
+    if (!product) return;
+
+    if (buyQuantity < 1 || buyQuantity > product.quantity) {
+      alert(`Please enter a valid quantity (1-${product.quantity})`);
+      return;
+    }
+
+    try {
+      setIsAddingToCart(true);
+      
+      const addToCartData = {
+        productId: Number(product.id),
+        quantity: buyQuantity
+      };
+
+      const response = await authenticatedFetch('/api/shop/cart/add', {
+        method: 'POST',
+        body: JSON.stringify(addToCartData)
+      });
+
+      if (response.ok) {
+        alert('Product added to cart successfully!');
+        setShowBuyModal(false);
+        setBuyQuantity(1);
+        // Refresh shopping cart
+        await fetchShoppingCart();
+      } else {
+        throw new Error('Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add product to cart. Please try again.');
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -348,7 +394,10 @@ export default function ProductPage() {
                 {/* Action Buttons - Only show if user doesn't own this product and has no pending offer */}
                 {!isOwnProduct && !pendingOffer && (
                   <div className="space-y-3">
-                    <button className="w-full bg-black text-white py-3 rounded-full text-base font-medium hover:bg-gray-800 transition-colors cursor-pointer">
+                    <button 
+                      onClick={handleBuyNow}
+                      className="w-full bg-black text-white py-3 rounded-full text-base font-medium hover:bg-gray-800 transition-colors cursor-pointer"
+                    >
                       Buy now
                     </button>
                     <button 
@@ -436,6 +485,89 @@ export default function ProductPage() {
           hospitalName={product.sellerHospitalName}
           onSuccess={handleOfferSuccess}
         />
+      )}
+
+      {/* Buy Now Modal */}
+      {showBuyModal && product && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Add to Cart</h2>
+                  <p className="text-sm text-gray-600">{product.name}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowBuyModal(false);
+                    setBuyQuantity(1);
+                  }}
+                  className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 hover:text-gray-800 cursor-pointer transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Product Info */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-600">Price per unit:</span>
+                  <span className="text-sm font-medium text-gray-900">{product.price.toFixed(2)} euro</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Quantity available:</span>
+                  <span className="text-sm font-medium text-gray-900">{product.quantity} {product.unit}</span>
+                </div>
+              </div>
+
+              {/* Quantity Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-900 mb-2">Select Quantity</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max={product.quantity}
+                    value={buyQuantity}
+                    onChange={(e) => setBuyQuantity(parseInt(e.target.value) || 1)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full text-sm text-gray-900 focus:outline-none focus:border-gray-400"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-600">
+                    {product.unit}
+                  </span>
+                </div>
+                {buyQuantity > 0 && buyQuantity <= product.quantity && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Total: {(product.price * buyQuantity).toFixed(2)} euro
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isAddingToCart || buyQuantity < 1 || buyQuantity > product.quantity}
+                  className="w-full bg-black text-white py-3 rounded-full text-base font-medium hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBuyModal(false);
+                    setBuyQuantity(1);
+                  }}
+                  className="w-full text-sm text-gray-600 hover:text-gray-900 underline cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
