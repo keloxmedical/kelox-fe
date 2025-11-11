@@ -266,7 +266,7 @@ export default function MyOffersPage() {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Outgoing
+            Outgoing {offers && `(${offers.createdOffers.length})`}
             {activeTab === 'outgoing' && (
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gray-900 -mb-px"></div>
             )}
@@ -279,7 +279,7 @@ export default function MyOffersPage() {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Incoming
+            Incoming {offers && `(${offers.receivedOffers.length})`}
             {activeTab === 'incoming' && (
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gray-900 -mb-px"></div>
             )}
