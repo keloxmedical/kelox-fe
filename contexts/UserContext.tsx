@@ -12,6 +12,7 @@ interface HospitalProfile {
   ownerId: string;
   ownerEmail: string;
   ownerSolanaWallet: string;
+  balance: number;
   contacts?: any[];
 }
 

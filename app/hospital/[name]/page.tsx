@@ -15,6 +15,7 @@ interface HospitalProfileResponse {
   ownerId: string;
   ownerEmail: string;
   ownerSolanaWallet: string;
+  balance: number;
   contacts?: any[];
 }
 
@@ -343,9 +344,40 @@ export default function HospitalProfilePage() {
             </div>
           </div>
 
-          {/* Right Column - Empty for now */}
-          <div className="lg:col-span-2">
-            {/* Reserved for future content */}
+          {/* Right Column - Wallet Card (Owner Only) */}
+          <div className="lg:col-span-2 flex lg:justify-end">
+            {isOwner && (
+              <div className="relative rounded-3xl p-5 text-white shadow-xl w-full lg:max-w-sm h-44 overflow-hidden flex flex-col" style={{ background: 'linear-gradient(to bottom right, #000000, #6C6C6C)' }}>
+                {/* Logo */}
+                <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-4 opacity-10">
+                  <img src="/klxlogo.png" alt="Kelox" className="w-32 h-32 object-contain" />
+                </div>
+
+                <div className="relative z-10 flex flex-col h-full">
+                  <h2 className="text-lg font-bold mb-3">Wallet</h2>
+                  
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">Balance</p>
+                    <p className="text-2xl font-bold">
+                      {hospital.balance.toLocaleString('en-US', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                      }).replace(',', ' ').replace('.', ',')} euro
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => router.push('/wallet')}
+                    className="flex items-center gap-2 text-white hover:text-gray-200 transition-colors cursor-pointer text-sm mt-auto"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    <span className="font-medium">Transactions history</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
