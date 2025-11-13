@@ -31,6 +31,7 @@ interface ProductResponse {
   sellerHospitalName: string;
 }
 
+
 interface ShopItemDto {
   id: number;
   product: ProductResponse;
