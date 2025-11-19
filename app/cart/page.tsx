@@ -79,6 +79,7 @@ export default function CartPage() {
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null);
   const [pendingOrders, setPendingOrders] = useState<OrderResponse[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [autoRequestAfterSelection, setAutoRequestAfterSelection] = useState(false);
   const alert = useAlert();
 
   useEffect(() => {
@@ -164,15 +165,19 @@ export default function CartPage() {
     }
   };
 
-  const handleRequestDeliveryPrice = async () => {
-    if (!selectedAddress) {
-      await alert.showAlert('Please select a delivery address first', 'Address Required');
+  const handleRequestDeliveryPrice = async (addressToUse?: DeliveryAddress) => {
+    const address = addressToUse || selectedAddress;
+    
+    if (!address) {
+      // Open modal and set flag to auto-request after selection
+      setAutoRequestAfterSelection(true);
+      setShowAddressModal(true);
       return;
     }
 
     try {
       const requestData = {
-        deliveryAddressId: selectedAddress.id
+        deliveryAddressId: address.id
       };
 
       const response = await authenticatedFetch('/api/shop/request-delivery-price', {
@@ -183,7 +188,7 @@ export default function CartPage() {
       if (response.ok) {
         const order = await response.json();
         await alert.showAlert(
-          'Delivery price request submitted successfully! You will be notified once the price is calculated.',
+          'Please check back later in 30 minutes',
           'Request Submitted'
         );
         // Refresh shopping cart (should be empty after creating order)
@@ -278,14 +283,11 @@ export default function CartPage() {
                 </div>
               </div>
             ) : !hasItems ? (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <p className="text-gray-600 text-lg">Your cart is empty</p>
+              <div className="py-12">
+                <p className="text-gray-600 text-lg mb-4">Your cart is empty</p>
                 <button
                   onClick={() => router.push('/marketplace')}
-                  className="mt-4 px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors cursor-pointer"
+                  className="px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   Continue Shopping
                 </button>
@@ -341,7 +343,7 @@ export default function CartPage() {
                             <div key={item.id} className="bg-secondary rounded-xl p-4">
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
-                                  <h4 className="text-base font-semibold text-gray-900 mb-1">{item.product.name}</h4>
+                                  <h4 className="text-base font-semibold text-gray-900 mb-1">{item.product.manufacturer + "-" + item.product.name}</h4>
                                   <p className="text-xs text-gray-600">Code: {item.product.code}</p>
                                 </div>
                                 <div className="text-right">
@@ -402,7 +404,7 @@ export default function CartPage() {
 
                           {/* Product Header */}
                           <div className="mb-4 mr-10">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-1">{item.product.name}</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">{item.product.manufacturer + " - " + item.product.name}</h3>
                             <p className="text-sm text-gray-600">by {item.product.sellerHospitalName}</p>
                           </div>
 
@@ -468,12 +470,7 @@ export default function CartPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Delivery fee:</span>
-                    <button 
-                      onClick={handleRequestDeliveryPrice}
-                      className="px-4 py-1 bg-black text-white rounded-full text-xs hover:bg-gray-800 transition-colors cursor-pointer"
-                    >
-                      Request price
-                    </button>
+                    <span className="text-sm text-gray-500 italic">pending</span>
                   </div>
                   <div className="flex items-center justify-between pb-4 border-b border-gray-300">
                     <span className="text-sm text-gray-600">Platform fee:</span>
@@ -488,7 +485,7 @@ export default function CartPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-2xl font-bold text-gray-900">
-                      {(totalProductsCost + platformFee).toFixed(2)} euro + deliver fee
+                      {(totalProductsCost + platformFee).toFixed(2)} euro + delivery fee
                     </p>
                     <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
@@ -500,10 +497,10 @@ export default function CartPage() {
                 <div>
                   <p className="text-xs text-gray-600 mb-4">Mandatory actions before payment</p>
                   
-                  {/* Action 1 - Select delivery address */}
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-900 mb-2">1. Add delivery address</p>
-                    {selectedAddress ? (
+                  {/* Selected Address Display (if any) */}
+                  {selectedAddress && (
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-900 mb-2">Delivery address</p>
                       <div className="bg-white rounded-xl p-4 border border-gray-300">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -521,25 +518,21 @@ export default function CartPage() {
                           Change address
                         </button>
                       </div>
-                    ) : (
-                      <button 
-                        onClick={() => setShowAddressModal(true)}
-                        className="w-full px-4 py-2 bg-black text-white rounded-full text-sm hover:bg-gray-800 transition-colors cursor-pointer"
-                      >
-                        Select Delivery Address
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* Action 2 - Request delivery fee */}
+                  {/* Action - Request delivery fee */}
                   <div>
-                    <p className="text-sm text-gray-900 mb-2">2. Request delivery fee price</p>
+                    <p className="text-sm text-gray-900 mb-2">1. Request delivery fee price</p>
                     <button 
-                      onClick={handleRequestDeliveryPrice}
+                      onClick={() => handleRequestDeliveryPrice()}
                       className="w-full px-4 py-2 bg-black text-white rounded-full text-sm hover:bg-gray-800 transition-colors cursor-pointer"
                     >
                       Request price
                     </button>
+                    {!selectedAddress && (
+                      <p className="text-xs text-gray-500 mt-2">You will be prompted to select a delivery address</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -613,11 +606,21 @@ export default function CartPage() {
       {hospitalProfile && (
         <DeliveryAddressModal
           isOpen={showAddressModal}
-          onClose={() => setShowAddressModal(false)}
+          onClose={() => {
+            setShowAddressModal(false);
+            setAutoRequestAfterSelection(false);
+          }}
           hospitalId={hospitalProfile.id}
           onAddressSelected={(address) => {
             setSelectedAddress(address);
+            setShowAddressModal(false);
             console.log('Selected address:', address);
+            
+            // If we're in auto-request mode, automatically call the API
+            if (autoRequestAfterSelection) {
+              setAutoRequestAfterSelection(false);
+              handleRequestDeliveryPrice(address);
+            }
           }}
         />
       )}

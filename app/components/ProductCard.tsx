@@ -27,7 +27,7 @@ export default function ProductCard({ product }: { product: ProductResponse }) {
   const priceWhole = Math.floor(product.price);
   const priceCents = Math.round((product.price - priceWhole) * 100);
   
-  // Format expiry date
+  // Format expiry ndate
   const formatExpiryDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     try {
@@ -47,8 +47,8 @@ export default function ProductCard({ product }: { product: ProductResponse }) {
   return (
     <div className="bg-secondary rounded-2xl p-6 flex flex-col h-full border border-secondary-2">
       {/* Product Name */}
-      <h3 className="text-lg font-semibold text-black mb-1">
-        {product.name}
+      <h3 className="text-base font-semibold text-black mb-1">
+        {product.manufacturer ? `${product.manufacturer} - ${product.name}` : product.name}
       </h3>
       
       {/* Seller */}

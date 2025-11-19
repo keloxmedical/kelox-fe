@@ -370,10 +370,7 @@ export default function HospitalProfilePage() {
                     onClick={() => router.push('/wallet')}
                     className="flex items-center gap-2 text-white hover:text-gray-200 transition-colors cursor-pointer text-sm mt-auto"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                    <span className="font-medium">Transactions history</span>
+                    <span className="font-medium underline">Transactions history</span>
                   </button>
                 </div>
               </div>
@@ -1294,6 +1291,30 @@ function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalProps) {
     onClose();
   };
 
+  const handleDownloadTemplate = () => {
+    // Create CSV template with headers and example row
+    // Order: Manufacturer, Product Name, Code, Lot Number, Expiry Date, Unit, Qty, Price ( Euro ), Comment
+    const headers = ['Manufacturer', 'Product Name', 'Code', 'Lot Number', 'Expiry Date', 'Unit', 'Qty', 'Price ( Euro )', 'Comment'];
+    // const exampleRow = ['Example Manufacturer', 'Example Product', 'PROD123', 'LOT456', '31/12/2025', 'BOX', '100', '10.50', 'Product description (optional)'];
+    
+    const csvContent = [
+      headers.join(','),
+      // exampleRow.join(',')
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'product_import_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Parse date in multiple formats: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy
   const parseDate = (dateStr: string): string | null => {
     if (!dateStr || dateStr.trim() === '') return null;
@@ -1371,12 +1392,46 @@ function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalProps) {
     // Parse header
     const header = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
     
-    // Validate required columns
+    // Map new column names to expected field names (case-insensitive)
+    const columnMapping: { [key: string]: string } = {
+      'manufacturer': 'manufacturer',
+      'product name': 'name',
+      'productname': 'name',
+      'name': 'name',
+      'code': 'code',
+      'lot number': 'lotnumber',
+      'lotnumber': 'lotnumber',
+      'expiry date': 'expirydate',
+      'expirydate': 'expirydate',
+      'unit': 'unit',
+      'qty': 'quantity',
+      'quantity': 'quantity',
+      'price ( euro )': 'price',
+      'price (euro)': 'price',
+      'price': 'price',
+      'comment': 'description',
+      'description': 'description'
+    };
+
+    // Normalize headers using the mapping
+    const normalizedHeader = header.map(h => columnMapping[h] || h);
+    
+    // Validate required columns (using normalized names)
     const requiredColumns = ['name', 'manufacturer', 'code', 'lotnumber', 'expirydate', 'price', 'quantity', 'unit'];
-    const missingColumns = requiredColumns.filter(col => !header.includes(col));
+    const missingColumns = requiredColumns.filter(col => !normalizedHeader.includes(col));
     
     if (missingColumns.length > 0) {
-      alert(`Missing required columns: ${missingColumns.join(', ')}\n\nPlease ensure your CSV has all required columns.`);
+      const missingOriginal = missingColumns.map(col => {
+        const mapping: { [key: string]: string } = {
+          'name': 'Product Name',
+          'manufacturer': 'Manufacturer',
+          'lotnumber': 'Lot Number',
+          'expirydate': 'Expiry Date',
+          'quantity': 'Qty'
+        };
+        return mapping[col] || col;
+      });
+      alert(`Missing required columns: ${missingOriginal.join(', ')}\n\nPlease ensure your CSV has all required columns.`);
       return;
     }
 
@@ -1388,7 +1443,8 @@ function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalProps) {
       const values = parseCsvLine(lines[i]);
       const row: any = {};
       
-      header.forEach((col, idx) => {
+      // Use normalized headers for mapping
+      normalizedHeader.forEach((col, idx) => {
         row[col] = values[idx] || '';
       });
 
@@ -1444,7 +1500,9 @@ function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalProps) {
       if (!row.price || row.price === '') {
         errors.push({ row: rowNumber, field: 'price', message: 'Price is required' });
       } else {
-        const price = parseFloat(row.price);
+        // Replace comma with dot to accept both decimal separators
+        const normalizedPrice = row.price.replace(',', '.');
+        const price = parseFloat(normalizedPrice);
         if (isNaN(price) || price <= 0) {
           errors.push({ row: rowNumber, field: 'price', message: 'Price must be a positive number' });
         } else {
@@ -1550,50 +1608,76 @@ function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalProps) {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">CSV Format Instructions</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Your CSV file must include the following columns in this exact order:
+                  Your CSV file must include the following columns in this order: <strong>Manufacturer, Product Name, Code, Lot Number, Expiry Date, Unit, Qty, Price ( Euro ), Comment</strong>
                 </p>
               </div>
 
+              {/* Download Template Button */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900 mb-1">Download CSV Template</h4>
+                      <p className="text-sm text-gray-600">Get started with a pre-formatted template file</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDownloadTemplate}
+                    className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-full text-sm font-medium hover:bg-green-600 transition-colors cursor-pointer shadow-md"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Template
+                  </button>
+                </div>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Required Columns:</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">Required Columns (in order):</h4>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">name</span>
-                    <span className="text-gray-700">Product name</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">manufacturer</span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Manufacturer</span>
                     <span className="text-gray-700">Manufacturer name</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">code</span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Product Name</span>
+                    <span className="text-gray-700">Product name</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Code</span>
                     <span className="text-gray-700">Product code</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">lotNumber</span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Lot Number</span>
                     <span className="text-gray-700">Lot number</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">expiryDate</span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Expiry Date</span>
                     <span className="text-gray-700">
                       Expiry date in format <strong>dd/mm/yyyy</strong> (also accepts dd-mm-yyyy or dd.mm.yyyy)
                     </span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">description</span>
-                    <span className="text-gray-700">Product description (optional)</span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Unit</span>
+                    <span className="text-gray-700">Unit of measurement - <strong>must be either BOX or PIECE</strong></span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">price</span>
-                    <span className="text-gray-700">Price per unit (number)</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">quantity</span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Qty</span>
                     <span className="text-gray-700">Quantity available (integer)</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">unit</span>
-                    <span className="text-gray-700">Unit of measurement - <strong>must be either BOX or PIECE</strong></span>
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Price ( Euro )</span>
+                    <span className="text-gray-700">Price per unit in Euro (number, accepts both . and , as decimal separator)</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900 font-semibold">Comment</span>
+                    <span className="text-gray-700">Product description (optional)</span>
                   </div>
                 </div>
               </div>
@@ -1606,12 +1690,14 @@ function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalProps) {
                   <div>
                     <p className="text-sm font-semibold text-yellow-800 mb-1">Important Notes:</p>
                     <ul className="text-xs text-yellow-700 space-y-1">
-                      <li>• Date format must be dd/mm/yyyy (day/month/year). You can also use - or . as separators</li>
-                      <li>• All fields are required except description</li>
+                      <li>• Columns must be in this order: Manufacturer, Product Name, Code, Lot Number, Expiry Date, Unit, Qty, Price ( Euro ), Comment</li>
+                      <li>• Expiry Date format must be dd/mm/yyyy (day/month/year). You can also use - or . as separators</li>
+                      <li>• Price ( Euro ) can use either comma (,) or dot (.) as decimal separator (e.g., 10.50 or 10,50)</li>
+                      <li>• All fields are required except Comment</li>
                       <li>• <strong>Unit must be either BOX or PIECE</strong> (other values will be rejected)</li>
                       <li>• Column names must match exactly (case-insensitive)</li>
-                      <li>• If a product with the same code and lot number exists, the quantity will be added</li>
-                      <li>• If a product has the same code but different lot number, a new product will be created</li>
+                      <li>• If a product with the same Code and Lot Number exists, the Qty will be added</li>
+                      <li>• If a product has the same Code but different Lot Number, a new product will be created</li>
                     </ul>
                   </div>
                 </div>
