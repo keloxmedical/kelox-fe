@@ -69,6 +69,7 @@ interface OrderResponse {
   platformFee: number;
   deliveryFee: number | null;
   totalCost: number | null;
+  paid: boolean;
 }
 
 export default function CartPage() {
@@ -105,8 +106,13 @@ export default function CartPage() {
       const response = await authenticatedFetch('/api/shop/orders/pending');
       
       if (response.ok) {
-        const data = await response.json();
-        setPendingOrders(data);
+        const data: OrderResponse[] = await response.json();
+        // Filter orders: show CALCULATING_LOGISTICS or CONFIRMING_PAYMENT with paid=true
+        const filteredOrders = data.filter(order => 
+          order.status === 'CALCULATING_LOGISTICS' || 
+          (order.status === 'CONFIRMING_PAYMENT' && !order.paid)
+        );
+        setPendingOrders(filteredOrders);
       } else if (response.status !== 404) {
         throw new Error('Failed to fetch pending orders');
       }
